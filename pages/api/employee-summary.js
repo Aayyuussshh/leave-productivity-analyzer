@@ -1,13 +1,27 @@
 import db from "../../lib/db";
 
 export default async function handler(req, res) {
+  // ✅ Railway DB guard
+  if (!db) {
+    return res.status(500).json({
+      error: "Database not available (Railway environment)",
+    });
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
-  try {
-    const { employeeId, month } = req.query;
+  const { employeeId, month } = req.query;
 
+  // ✅ Required query validation
+  if (!employeeId || !month) {
+    return res.status(400).json({
+      error: "employeeId and month are required",
+    });
+  }
+
+  try {
     const [rows] = await db.query(
       `
       SELECT
@@ -21,16 +35,19 @@ export default async function handler(req, res) {
       [employeeId, month]
     );
 
-    const expectedHours = Number(rows[0].expectedHours || 0);
-    const actualHours = Number(rows[0].actualHours || 0);
-    const leavesUsed = Number(rows[0].leavesUsed || 0);
+    // ✅ Defensive fallback
+    const summary = rows?.[0] || {};
+
+    const expectedHours = Number(summary.expectedHours || 0);
+    const actualHours = Number(summary.actualHours || 0);
+    const leavesUsed = Number(summary.leavesUsed || 0);
 
     const productivity =
       expectedHours > 0
         ? Number(((actualHours / expectedHours) * 100).toFixed(2))
-        : null;
+        : 0;
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       employeeId: Number(employeeId),
       month,
@@ -39,9 +56,11 @@ export default async function handler(req, res) {
       leavesUsed,
       productivity,
     });
-
   } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: "Server error" });
+    console.error("Employee summary error:", error);
+    return res.status(500).json({
+      error: "Failed to fetch employee summary",
+      details: error.message,
+    });
   }
 }

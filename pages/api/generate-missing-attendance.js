@@ -7,55 +7,66 @@ function getExpectedHours(day) {
   return 0;                             // Sunday
 }
 
-// Helper: get all dates of a month - CORRECTED VERSION (FIXES TIMEZONE BUG)
+// Helper: get all dates of a month (timezone-safe)
 function getMonthDates(year, month) {
   const dates = [];
-  // Use noon (12:00) to avoid UTC shift issues
-  let currentDate = new Date(year, month - 1, 1, 12); // Start from the first day of the month at noon
+  let currentDate = new Date(year, month - 1, 1, 12); // noon = safe
 
-  // Loop until we reach the next month
   while (currentDate.getMonth() === month - 1) {
-    dates.push(new Date(currentDate)); // Create a copy of the date
-    currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
+    dates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
   }
 
   return dates;
 }
 
 export default async function handler(req, res) {
-  const { employeeId, month } = req.query; // month = YYYY-MM
-
-  if (!employeeId || !month) {
-    return res.status(400).json({ error: "employeeId and month required" });
+  // ✅ Railway DB guard
+  if (!db) {
+    return res.status(500).json({
+      error: "Database not available (Railway environment)",
+    });
   }
 
+  // ✅ This endpoint MUST be POST
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      error: "Method not allowed. Use POST.",
+    });
+  }
+
+  const { employeeId, month } = req.body; // safer than query for mutation
+
+  if (!employeeId || !month) {
+    return res.status(400).json({
+      error: "employeeId and month are required",
+    });
+  }
+
+  const connection = await db.getConnection();
+
   try {
+    await connection.beginTransaction();
+
     const [year, mon] = month.split("-").map(Number);
     const dates = getMonthDates(year, mon);
 
     let inserted = 0;
 
     for (const d of dates) {
-      const day = d.getDay(); // 0 = Sun
-
-      // Skip Sundays (they are "Off", not "Leave")
-      if (day === 0) {
-        continue;
-      }
+      const day = d.getDay();
+      if (day === 0) continue; // Sunday = Off
 
       const dateStr = d.toISOString().split("T")[0];
       const expectedHours = getExpectedHours(day);
 
-      // Check if attendance exists
-      const [existing] = await db.query(
-        `SELECT id FROM attendance 
-         WHERE employee_id = ? AND date = ?`,
+      const [existing] = await connection.query(
+        `SELECT id FROM attendance WHERE employee_id = ? AND date = ?`,
         [employeeId, dateStr]
       );
 
       if (existing.length === 0) {
-        // Insert leave (only for Monday-Saturday)
-        await db.query(
+        await connection.query(
           `
           INSERT INTO attendance
           (employee_id, date, in_time, out_time, worked_hours, expected_hours, is_leave)
@@ -63,21 +74,27 @@ export default async function handler(req, res) {
           `,
           [employeeId, dateStr, expectedHours]
         );
-
         inserted++;
       }
     }
 
-    return res.json({
+    await connection.commit();
+
+    return res.status(200).json({
       success: true,
       message: "Missing attendance auto-generated",
-      employeeId,
+      employeeId: Number(employeeId),
       month,
       insertedLeaves: inserted,
     });
-
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
+    await connection.rollback();
+    console.error("Generate missing attendance error:", err);
+    return res.status(500).json({
+      error: "Failed to generate missing attendance",
+      details: err.message,
+    });
+  } finally {
+    connection.release();
   }
 }
