@@ -132,22 +132,26 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <MetricCard
           title="Expected Hours"
-          value={`${summary?.data?.reduce((a, b) => a + Number(b.expected_hours), 0) || 0} hrs`}
+          // ✅ Use camelCase property name: expectedHours
+          value={`${summary?.data?.reduce((a, b) => a + Number(b.expectedHours), 0) || 0} hrs`}
           color="text-indigo-600"
         />
         <MetricCard
           title="Actual Hours"
+          // ✅ Use camelCase property name: workedHours
           // Format to 1 decimal place
-          value={`${(summary?.data?.reduce((a, b) => a + Number(b.actual_hours), 0) || 0).toFixed(1)} hrs`}
+          value={`${(summary?.data?.reduce((a, b) => a + Number(b.workedHours), 0) || 0).toFixed(1)} hrs`}
           color="text-green-600"
         />
         <MetricCard
           title="Leaves Used"
-          value={summary?.data?.reduce((a, b) => a + Number(b.leaves_used), 0) || 0}
+          // ✅ Use camelCase property name: leavesUsed
+          value={summary?.data?.reduce((a, b) => a + Number(b.leavesUsed), 0) || 0}
           color="text-orange-600"
         />
         <MetricCard
           title="Avg Productivity"
+          // ✅ Use camelCase property name: productivity
           value={
             summary?.data?.length
               ? `${(
@@ -175,18 +179,18 @@ export default function Dashboard() {
           <tbody>
             {summary?.data?.map(row => (
               <tr
-                key={row.employee_code} // Use employee_code as key
-                onClick={() => openAttendance(row.employee_code)} // Pass employee_code to openAttendance
+                key={row.employeeCode} // ✅ Use camelCase property name: employeeCode
+                onClick={() => openAttendance(row.employeeCode)} // ✅ Pass camelCase property name: employeeCode
                 className="border-t cursor-pointer hover:bg-gray-50"
               >
                 <td className="p-4 font-medium text-gray-900">
-                  {row.employee_code} {/* Directly display the employee_code */}
+                  {row.employeeCode} {/* ✅ Directly display the camelCase property name: employeeCode */}
                 </td>
-                <td className="p-4 text-gray-800">{row.expected_hours}</td>
+                <td className="p-4 text-gray-800">{row.expectedHours}</td> {/* ✅ Use camelCase property name: expectedHours */}
                 <td className="p-4 text-gray-800">
-                  {Number(row.actual_hours).toFixed(2)}
+                  {Number(row.workedHours).toFixed(2)} {/* ✅ Use camelCase property name: workedHours */}
                 </td>
-                <td className="p-4 text-gray-800">{row.leaves_used}</td>
+                <td className="p-4 text-gray-800">{row.leavesUsed}</td> {/* ✅ Use camelCase property name: leavesUsed */}
                 <td
                   className={`p-4 font-bold ${
                     row.productivity >= 75
@@ -196,7 +200,7 @@ export default function Dashboard() {
                       : "text-red-600"
                   }`}
                 >
-                  {Number(row.productivity).toFixed(2)}%
+                  {Number(row.productivity).toFixed(2)}% {/* ✅ Use camelCase property name: productivity */}
                 </td>
               </tr>
             ))}
