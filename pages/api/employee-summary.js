@@ -25,12 +25,12 @@ export default async function handler(req, res) {
     const [rows] = await db.query(
       `
       SELECT
-        SUM(expected_hours) AS expectedHours,
+        SUM(CASE WHEN is_leave = 0 THEN expected_hours ELSE 0 END) AS expectedHours,
         SUM(worked_hours) AS actualHours,
         SUM(is_leave) AS leavesUsed
-      FROM attendance
-      WHERE employee_id = ?
-        AND DATE_FORMAT(date, '%Y-%m') = ?
+            FROM attendance
+              WHERE employee_id = ?
+                AND DATE_FORMAT(date, '%Y-%m') = ?
       `,
       [employeeId, month]
     );
