@@ -11,6 +11,7 @@ function getDayName(dateStr) {
     "Friday",
     "Saturday",
   ];
+  // Use UTC to avoid timezone issues
   return days[new Date(dateStr + "T00:00:00Z").getUTCDay()];
 }
 
