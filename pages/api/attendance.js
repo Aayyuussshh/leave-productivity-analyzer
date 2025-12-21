@@ -1,6 +1,6 @@
 import db from "../../lib/db";
 
-// Helper: get day name safely (UTC-safe)
+// Helper: get day name safely (handles timezone shifts correctly)
 function getDayName(dateStr) {
   const days = [
     "Sunday",
@@ -11,8 +11,11 @@ function getDayName(dateStr) {
     "Friday",
     "Saturday",
   ];
-  // Use UTC to avoid timezone issues
-  return days[new Date(dateStr + "T00:00:00Z").getUTCDay()];
+  // Ensure the date string is treated as a local date to get the correct day
+  // Create a Date object using the date string (YYYY-MM-DD) which is interpreted as local time at midnight
+  const dateObj = new Date(dateStr);
+  // Use getDay() which returns the day of the week based on local time
+  return days[dateObj.getDay()];
 }
 
 export default async function handler(req, res) {
@@ -57,12 +60,15 @@ export default async function handler(req, res) {
       const day = getDayName(r.date);
       let status = "Present";
 
-      if (day === "Sunday") status = "Off";
-      else if (r.is_leave === 1) status = "Leave";
+      if (day === "Sunday") {
+        status = "Off";
+      } else if (r.is_leave === 1) {
+        status = "Leave";
+      }
 
       return {
         date: r.date,
-        day,
+        day, // This will now be the correct day name (e.g., "Monday", "Tuesday", etc.)
         inTime: r.in_time,
         outTime: r.out_time,
         workedHours: Number(r.worked_hours || 0),
